@@ -5,29 +5,44 @@
 
 #include <sys/stat.h>
 #include <dirent.h>
+#include <errno.h>
 
 char *mode_str(int); 
 
-int main()
+int main(int argc, char *argv[])
 {
-    DIR *dir = opendir("."); 
+    char *path; 
+    if(argc > 1)
+        path = argv[1]; 
+    else 
+    {
+        printf("Dir Name: "); 
+        path = (char *) malloc(100 * sizeof(char)); 
+        scanf("%s", path); 
+    }
+    DIR *dir = opendir(path); 
+    if(!dir)
+    {
+        printf("errno: %d\tmessg: %s\n", errno, strerror(errno)); 
+        return 0; 
+    }
+    printf("Scanning: %s\n", path); 
+    printf("\n"); 
 
     int total_size = 0; 
+    char name[100]; 
     char *mode; 
     char *time; 
     char *color; 
     struct stat info; 
     struct dirent *entry = readdir(dir); 
-    printf("%s %s  %s  %s   %s            %s\n", 
-            "Permissions", 
-            "UID", 
-            "GID", 
-            "Size", 
-            "Date Modified", 
-            "Name"); 
     while(entry)
     {
-        stat(entry->d_name, &info); 
+        strcpy(name, path); 
+        strcat(name, "/");  // add an extra '/' if it doesn't exist 
+        strcat(name, entry->d_name);  
+        stat(name, &info); 
+
         mode = mode_str(info.st_mode); 
         time = ctime(&(info.st_mtim.tv_sec)); 
         *strchr(time, '\n') = 0; 
@@ -37,15 +52,14 @@ int main()
             color = "\033[32m"; 
         else 
             color = ""; 
-        printf("%s  %u %u %6lu %s %s%s\n", 
+        printf("%s %6lu %s %s%s\n", 
                 mode,
-                info.st_uid,
-                info.st_gid,
                 info.st_size,
                 time, 
                 color,
                 entry->d_name); 
         printf("\033[0m"); // reset ansi code
+
         free(mode); 
         if(entry->d_type & DT_REG)
             total_size += info.st_size; 
@@ -55,6 +69,7 @@ int main()
     printf("Total Size: %d\n", total_size); 
 
     closedir(dir); 
+    if(argc == 1) free(path); 
     return 0; 
 }
 
